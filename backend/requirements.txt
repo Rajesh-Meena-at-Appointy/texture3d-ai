@@ -1,0 +1,29 @@
+# Texture3D AI - Backend Requirements
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+pydantic==2.5.3
+
+# Image Processing
+pillow==10.2.0
+numpy==1.26.3
+
+# Background Removal
+rembg==2.0.57
+onnxruntime==1.16.3
+
+# 3D Processing
+trimesh==4.1.0
+scipy==1.12.0
+
+# Deep Learning (CPU version - use CUDA version for GPU)
+torch==2.1.2
+torchvision==0.16.2
+
+# Async file operations
+aiofiles==23.2.1
+
+# Utilities
+python-dotenv==1.0.0
