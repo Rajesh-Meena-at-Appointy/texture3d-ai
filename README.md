@@ -1,96 +1,36 @@
-# Texture3D AI
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-AI-powered image-to-3D conversion web application.
+## Getting Started
 
-## Project Structure
-
-```
-ollama-demo/
-├── backend/           # Python FastAPI backend
-│   ├── main.py       # API server
-│   ├── requirements.txt
-│   └── README.md
-│
-├── texture3d-ai/     # Next.js frontend
-│   ├── src/
-│   ├── public/
-│   └── package.json
-│
-├── SPEC.md           # Project specification
-└── README.md         # This file
-```
-
-## Setup
-
-### Backend
+First, run the development server:
 
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
-python main.py
-```
-
-The API runs at `http://localhost:8000`
-
-### Frontend
-
-```bash
-cd texture3d-ai
-npm install
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-The frontend runs at `http://localhost:3000`
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Environment Variables
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-### Frontend (.env.local)
-```
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-### Backend (.env)
-```
-PORT=8000
-HOST=0.0.0.0
-```
+## Learn More
 
-## API Endpoints
+To learn more about Next.js, take a look at the following resources:
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/upload` | Upload image for 3D conversion |
-| GET | `/api/jobs/{job_id}` | Get job status |
-| GET | `/api/jobs` | List all jobs |
-| GET | `/api/download/{job_id}` | Download model (format: obj/glb/stl) |
-| DELETE | `/api/jobs/{job_id}` | Delete job |
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-## Features
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-- Drag & drop image upload
-- Background removal using rembg
-- Depth map generation using MiDaS/MobileNet
-- Normal map generation
-- 3D mesh generation from depth maps
-- UV-mapped texture generation
-- Multiple export formats (OBJ, GLB, STL)
-- Real-time progress tracking
-- 3D model preview with rotation controls
+## Deploy on Vercel
 
-## Tech Stack
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-### Frontend
-- Next.js 14
-- React
-- Three.js / React Three Fiber
-- Framer Motion
-- Tailwind CSS
-
-### Backend
-- FastAPI
-- PyTorch
-- rembg
-- trimesh
-- Pillow
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
