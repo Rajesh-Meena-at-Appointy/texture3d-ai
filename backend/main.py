@@ -566,52 +566,65 @@ async def process_image_to_3d(
                 temp_file.unlink()
 
 
+# Cache for depth model
+_depth_model = None
+_depth_processor = None
+
 async def generate_depth_map(image: Image.Image):
-    """Generate depth map from image using MiDaS for better 3D reconstruction"""
+    """Generate depth map using Depth Anything V2 - much better than simple methods"""
+    global _depth_model, _depth_processor
+
     import numpy as np
 
-    # Try using MiDaS (专门为3D重建设计的深度估计模型)
+    # Try using Depth Anything V2 from Hugging Face
     try:
-        import torch
-        import torchvision.transforms as transforms
-
-        # Use MiDaS model for better depth estimation
-        # Try to load MiDaS model
-        try:
-            from torchvision.models.detection import retinanet_resnet50_fpn
-            # MiDaS not available in torchvision directly, use alternative
-            raise ImportError("MiDaS not in torchvision")
-        except:
-            pass
-
-        # Try to use depthAnything or similar model
-        # For now, use DPT (Dense Prediction Transformer) approach with available models
         from transformers import AutoModelForDepthEstimation, AutoImageProcessor
+        import torch
 
-        # This would give better results but requires more dependencies
-        # For CPU, we'll improve the simple method instead
+        # Use small model for CPU efficiency
+        model_name = "LiheYoung/depth-anything-small-hf"
 
-        raise ImportError("Using improved fallback")
+        if _depth_model is None:
+            print(f"Loading Depth Anything model: {model_name}")
+            _depth_processor = AutoImageProcessor.from_pretrained(model_name)
+            _depth_model = AutoModelForDepthEstimation.from_pretrained(model_name)
+            _depth_model.eval()
+
+        # Prepare image
+        img_resized = image.resize((518, 518), Image.LANCZOS)
+
+        # Get depth prediction
+        inputs = _depth_processor(images=img_resized, return_tensors="pt")
+
+        with torch.no_grad():
+            outputs = _depth_model(**inputs)
+            depth_pred = outputs.predicted_depth
+
+        # Resize back to original size
+        depth_np = torch.nn.functional.interpolate(
+            depth_pred.unsqueeze(1),
+            size=image.size,
+            mode="bilinear",
+            align_corners=False
+        ).squeeze().numpy()
+
+        # Normalize to 0-1
+        depth_np = (depth_np - depth_np.min()) / (depth_np.max() - depth_np.min() + 1e-8)
+
+        print(f"Depth Anything V2 generated depth map successfully")
+        return depth_np
 
     except Exception as e:
-        print(f"Advanced depth failed, using improved depth: {e}")
-        # 改进的深度图生成 - 基于图像特征
-        import numpy as np
+        print(f"Depth Anything failed: {e}")
+        print("Falling back to improved depth estimation")
+
+        # Fallback: 改进的深度图生成
         import scipy.ndimage
 
-        # 转换为灰度并增强
         img_gray = np.array(image.convert("L")).astype(float) / 255.0
-
-        # 使用边缘检测增强深度
         edges = scipy.ndimage.sobel(img_gray)
-
-        # 结合强度和边缘信息
         depth = 0.7 * (1 - img_gray) + 0.3 * np.abs(edges)
-
-        # 多尺度高斯滤波获得更平滑的深度
         depth = scipy.ndimage.gaussian_filter(depth, sigma=3)
-
-        # 归一化
         depth = (depth - depth.min()) / (depth.max() - depth.min() + 1e-8)
 
         return depth

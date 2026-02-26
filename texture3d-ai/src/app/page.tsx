@@ -530,6 +530,9 @@ function Hero() {
   }, []);
 
   const processImage = async (file: File) => {
+    // Prevent multiple uploads
+    if (isProcessing) return;
+
     setApiError(null);
     setIsProcessing(true);
     setProgress(0);
