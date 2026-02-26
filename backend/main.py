@@ -19,6 +19,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 import aiofiles
+from PIL import Image
+import numpy as np
 
 # Configure paths
 BASE_DIR = Path(__file__).parent
@@ -571,7 +573,7 @@ async def generate_depth_map(image: Image.Image):
     # Try using MiDaS if available
     try:
         import torch
-        import torch.nn as torchvision.transforms as transforms
+        import torchvision.transforms as transforms
         from torchvision.models import mobilenet_v3_large, MobileNet_V3_Large_Weights
 
         # Check if we have processed this before

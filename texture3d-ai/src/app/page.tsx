@@ -944,7 +944,7 @@ function Features() {
       description: "Your images are processed securely and never stored. Complete privacy guaranteed.",
     },
     {
-      icon: Image,
+      icon: Palette,
       title: "Smart Texturing",
       description: "AI automatically generates realistic textures that match your image perfectly.",
     },
