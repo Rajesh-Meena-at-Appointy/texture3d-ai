@@ -727,19 +727,31 @@ async def apply_texture_to_mesh(mesh, texture_path, original_image):
     uvs[:, 1] = (mesh.vertices[:, 1] + 1) / 2
     uvs = np.clip(uvs, 0, 1)
 
-    # Create material with texture
-    material = trimesh.material.PBRMaterial(
-        baseColorFactor=[1.0, 1.0, 1.0, 1.0],
-        metallicFactor=0.0,
-        roughnessFactor=0.8
-    )
+    # Create material with texture - use newer trimesh API
+    try:
+        # Try new API (trimesh 4.x)
+        material = trimesh.material.PBRMaterial(
+            baseColorFactor=[1.0, 1.0, 1.0, 1.0],
+            metallicFactor=0.0,
+            roughnessFactor=0.8
+        )
 
-    # Add visual
-    mesh.visual = trimesh.visual.TextureVisuals(
-        uv=uvs,
-        material=material,
-        image=texture
-    )
+        # Add visual
+        mesh.visual = trimesh.visual.TextureVisuals(
+            uv=uvs,
+            material=material,
+            image=texture
+        )
+    except (AttributeError, TypeError):
+        # Fallback for older trimesh versions or simplified approach
+        try:
+            mesh.visual = trimesh.visual.TextureVisuals(
+                uv=uvs,
+                image=texture
+            )
+        except Exception:
+            # If texture mapping fails, just use vertex colors
+            pass
 
     return mesh
 

@@ -657,9 +657,36 @@ function Hero() {
     }
   };
 
-  const handleSampleSelect = (sample: SampleImage) => {
-    // Samples not supported with real backend - show message
-    setStatusMessage("Please upload your own image for 3D conversion");
+  const handleSampleSelect = async (sample: SampleImage) => {
+    // Use sample images from a placeholder service
+    const sampleUrls = [
+      "https://picsum.photos/seed/portrait/512/512",
+      "https://picsum.photos/seed/landscape/512/512",
+      "https://picsum.photos/seed/product/512/512",
+      "https://picsum.photos/seed/abstract/512/512",
+      "https://picsum.photos/seed/building/512/512",
+      "https://picsum.photos/seed/car/512/512",
+    ];
+
+    const imageUrl = sampleUrls[sample.id - 1];
+
+    try {
+      // Fetch the image and convert to a file
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const file = new File([blob], `sample_${sample.id}.jpg`, { type: "image/jpeg" });
+
+      // Process the image
+      setUploadedImage(imageUrl);
+      setSelectedSample(sample);
+      setShowPreview(true);
+      setApiError(null);
+
+      processImage(file);
+    } catch (error) {
+      console.error("Failed to load sample image:", error);
+      setApiError("Failed to load sample image");
+    }
   };
 
   const clearUpload = () => {
