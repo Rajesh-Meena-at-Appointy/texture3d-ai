@@ -28,9 +28,80 @@ UPLOAD_DIR = BASE_DIR / "uploads"
 OUTPUT_DIR = BASE_DIR / "outputs"
 TEMP_DIR = BASE_DIR / "temp"
 
+# Meshy API Configuration
+MESHY_API_KEY = os.getenv("MESHY_API_KEY", "")
+
 # Create directories
 for dir_path in [UPLOAD_DIR, OUTPUT_DIR, TEMP_DIR]:
     dir_path.mkdir(exist_ok=True)
+
+
+async def generate_3d_with_meshy(image_path: str, job_id: str) -> bool:
+    """Generate 3D model using Meshy AI API"""
+    if not MESHY_API_KEY:
+        print("Meshy API key not configured")
+        return False
+
+    import httpx
+
+    try:
+        print(f"Starting Meshy AI generation for job {job_id}")
+
+        # Step 1: Upload image and start generation
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # Upload image
+            with open(image_path, "rb") as f:
+                files = {"file": f}
+                upload_response = await client.post(
+                    "https://api.meshy.ai/v2/image-to-3d",
+                    headers={"Authorization": f"Bearer {MESHY_API_KEY}"},
+                    files=files
+                )
+
+            if upload_response.status_code != 202:
+                print(f"Meshy upload failed: {upload_response.text}")
+                return False
+
+            result = upload_response.json()
+            task_id = result["result"]
+
+            # Step 2: Poll for completion
+            while True:
+                await asyncio.sleep(3)
+                status_response = await client.get(
+                    f"https://api.meshy.ai/v2/image-to-3d/{task_id}",
+                    headers={"Authorization": f"Bearer {MESHY_API_KEY}"}
+                )
+
+                status_data = status_response.json()
+                task_status = status_data.get("status")
+
+                if task_status == "SUCCEEDED":
+                    model_url = status_data["model_urls"]["glb"]
+                    # Download the model
+                    model_response = await client.get(model_url)
+                    output_path = OUTPUT_DIR / f"{job_id}.glb"
+                    with open(output_path, "wb") as f:
+                        f.write(model_response.content)
+
+                    # Also save as OBJ
+                    if status_data.get("model_urls", {}).get("obj"):
+                        obj_url = status_data["model_urls"]["obj"]
+                        obj_response = await client.get(obj_url)
+                        obj_path = OUTPUT_DIR / f"{job_id}.obj"
+                        with open(obj_path, "wb") as f:
+                            f.write(obj_response.content)
+
+                    print(f"Meshy 3D model generated: {job_id}")
+                    return True
+
+                elif task_status == "FAILED":
+                    print(f"Meshy generation failed: {status_data.get('error')}")
+                    return False
+
+    except Exception as e:
+        print(f"Meshy API error: {e}")
+        return False
 
 app = FastAPI(
     title="Texture3D AI API",
@@ -448,6 +519,31 @@ async def process_image_to_3d(
         job.message = "Loading image..."
         jobs_db[job_id] = job.model_dump()
 
+        # Try Meshy AI first if API key is configured
+        if MESHY_API_KEY:
+            job.progress = 20
+            job.message = "Using AI to generate 3D model..."
+            jobs_db[job_id] = job.model_dump()
+
+            meshy_success = await generate_3d_with_meshy(input_path, job_id)
+
+            if meshy_success:
+                # Generate thumbnail
+                img = Image.open(input_path).convert("RGB")
+                thumbnail_path = await generate_thumbnail(img, job_id)
+
+                # Success!
+                job.status = JobStatus.COMPLETED
+                job.progress = 100
+                job.message = "3D model generated successfully!"
+                job.completed_at = datetime.now()
+                job.output_model_url = f"/api/download/{job_id}?format=obj"
+                job.output_texture_url = f"/api/download/texture/{job_id}"
+                job.thumbnail_url = f"/api/images/{thumbnail_path.name}" if thumbnail_path else None
+                jobs_db[job_id] = job.model_dump()
+                return  # Exit early if Meshy succeeded
+
+        # Fallback: Local processing (lower quality)
         # Step 1: Load and preprocess image
         from PIL import Image
         import numpy as np
