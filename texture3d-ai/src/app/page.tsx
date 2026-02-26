@@ -513,44 +513,55 @@ function Hero() {
     setIsDragging(false);
   }, []);
 
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [showGenerateButton, setShowGenerateButton] = useState(false);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith("image/")) {
-      processImage(file);
+      handleImageSelected(file);
     }
   }, []);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith("image/")) {
-      processImage(file);
+      handleImageSelected(file);
     }
   }, []);
 
-  const processImage = async (file: File) => {
-    // Prevent multiple uploads
-    if (isProcessing) return;
-
-    setApiError(null);
-    setIsProcessing(true);
-    setProgress(0);
-    setStatusMessage("Uploading image...");
-
+  const handleImageSelected = (file: File) => {
     // Show preview immediately
     const reader = new FileReader();
     reader.onload = (event) => {
       setUploadedImage(event.target?.result as string);
       setSelectedSample(null);
       setShowPreview(true);
+      setPendingFile(file);
+      setShowGenerateButton(true);
+      setJobId(null);
+      setDownloadUrl(null);
+      setTextureUrl(null);
+      setProgress(0);
+      setStatusMessage("Image ready! Click 'Generate 3D Model' to convert");
     };
     reader.readAsDataURL(file);
+  };
+
+  const startConversion = async () => {
+    if (!pendingFile || isProcessing) return;
+
+    setApiError(null);
+    setIsProcessing(true);
+    setShowGenerateButton(false);
+    setProgress(0);
+    setStatusMessage("Uploading image...");
 
     try {
-      // Upload to backend
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", pendingFile);
 
       const params = new URLSearchParams({
         remove_background: "true",
@@ -571,13 +582,17 @@ function Hero() {
       setJobId(job.job_id);
       setStatusMessage(job.message);
 
-      // Poll for status
       pollJobStatus(job.job_id);
     } catch (error) {
       console.error("Upload error:", error);
       setApiError(error instanceof Error ? error.message : "Upload failed");
       setIsProcessing(false);
+      setShowGenerateButton(true);
     }
+  };
+
+  const processImage = async (file: File) => {
+    handleImageSelected(file);
   };
 
   const pollJobStatus = (id: string) => {
@@ -679,13 +694,18 @@ function Hero() {
       const blob = await response.blob();
       const file = new File([blob], `sample_${sample.id}.jpg`, { type: "image/jpeg" });
 
-      // Process the image
+      // Show preview first, wait for user to click Generate
       setUploadedImage(imageUrl);
       setSelectedSample(sample);
       setShowPreview(true);
+      setPendingFile(file);
+      setShowGenerateButton(true);
+      setJobId(null);
+      setDownloadUrl(null);
+      setTextureUrl(null);
+      setProgress(0);
+      setStatusMessage("Image ready! Click 'Generate 3D Model' to convert");
       setApiError(null);
-
-      processImage(file);
     } catch (error) {
       console.error("Failed to load sample image:", error);
       setApiError("Failed to load sample image");
@@ -699,6 +719,8 @@ function Hero() {
     setUploadedImage(null);
     setSelectedSample(null);
     setShowPreview(false);
+    setShowGenerateButton(false);
+    setPendingFile(null);
     setProgress(0);
     setStatusMessage("");
     setJobId(null);
@@ -918,6 +940,15 @@ function Hero() {
                 animate={{ opacity: 1, y: 0 }}
                 className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex gap-3"
               >
+                {showGenerateButton && !jobId ? (
+                  <button
+                    onClick={startConversion}
+                    className="px-8 py-4 rounded-full bg-primary hover:bg-primary-glow transition-all glow-primary flex items-center gap-2 font-medium text-lg"
+                  >
+                    <Sparkles className="w-5 h-5" /> Generate 3D Model
+                  </button>
+                ) : (
+                <>
                 <div className="relative group">
                   <button className="px-6 py-3 rounded-full bg-primary hover:bg-primary-glow transition-all flex items-center gap-2 font-medium">
                     <Download className="w-5 h-5" /> Download
@@ -952,6 +983,8 @@ function Hero() {
                 >
                   <Share2 className="w-5 h-5" /> Share
                 </button>
+                </>
+                )}
               </motion.div>
             )}
           </motion.div>
